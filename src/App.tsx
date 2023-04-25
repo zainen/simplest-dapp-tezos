@@ -56,12 +56,12 @@ function App() {
 
   return (
      <div className='h-screen w-full bg-sky-200'>
-      <div className='flex justify-end pt-10 container absolute'>
+      <div className='flex w-full justify-end pt-10 pr-10 absolute'>
         <Card className=''>
           <Account signer={signer} setSigner={setSigner} Tezos={Tezos} pkh={pkh} balance={balance} setBalance={setBalance}/>
         </Card>
       </div>
-      <div className='h-full w-full container flex justify-center items-center'>
+      <div className='h-full w-full flex justify-center items-center'>
 
         <Card className=' w-3/5 flex flex-col items-center'>
           {error ? <>
