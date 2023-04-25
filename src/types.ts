@@ -7,4 +7,6 @@ export interface AccountProps {
   pkh?: string;
   signer: InMemorySigner | null;
   setSigner: Dispatch<SetStateAction<InMemorySigner | null>>;
+  balance: number;
+  setBalance: Dispatch<SetStateAction<number>>;
 }
