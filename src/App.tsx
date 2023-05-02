@@ -1,52 +1,60 @@
-import { useEffect, useMemo, useState } from 'react';
-
-import './App.css';
-import { InMemorySigner } from '@taquito/signer';
-import { Account } from './components/Account';
+import { useState } from 'react';
 import { TezosToolkit } from '@taquito/taquito';
-import { Card } from './components/Card';
-import { getSetBalances, setStatePkh } from './helperFunctions';
+import { getSetBalances, getWallet, mutezToTez } from './helperFunctions';
+import { BeaconWallet } from '@taquito/beacon-wallet';
+import { NetworkType, Regions } from "@airgap/beacon-types";
+
 
 function App() {
+  const network = 'https://ghostnet.ecadinfra.com'
+  const defaultMatrixNode = "beacon-node-1.sky.papers.tech";
+
+  // Basic States
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<unknown>();
+  const [walletInitialized, setWalletInitialized] = useState<boolean>(false);
   
-
+  // Account Information
   const [pkh, setPkh] = useState<string>('');
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState<number>(0);
+
+  // Reciever Information
+  const [recieverPkh, setRecieverPkh] = useState<string>('');
   const [recieverBalanceBefore, setRecieverBalanceBefore] = useState(0);
   const [recieverBalanceAfter, setRecieverBalanceAfter] = useState(0);
 
-  const [reciever, setReciever] = useState<string>('');
+  // Amount to send
   const [amount, setAmount] = useState<number>(0);
-  const [signer, setSigner] = useState<InMemorySigner | null>(null);
-  const Tezos = useMemo(() => {
-    const tezos = new TezosToolkit('https://ghostnet.ecadinfra.com');
-    if (signer) {
-      tezos.setProvider({ signer });
-    }
-    return tezos;
-  }, [signer]);
-  useEffect(() => {
-    if (signer) {
-      setStatePkh(signer, setPkh);
-      console.log(balance)
-      getSetBalances(setBalance, Tezos)
-      console.log(balance)
-    }
-    ;
-  }, [Tezos, signer, balance]);
+
+  // Hold Wallet and TezosToolkit instances
+  const [wallet] = useState(new BeaconWallet({ name: "Simple Transfer dApp", preferredNetwork: NetworkType.GHOSTNET, matrixNodes: { [Regions.NORTH_AMERICA_WEST]: [defaultMatrixNode] } }))
+  const [Tezos] = useState(new TezosToolkit(network));
 
   const sendTez = async () => {
     try {
-      const receiverInitialBalance = ((await Tezos.rpc.getBalance(reciever)).toNumber() / 1000000);
+      // Get Initial Balance of Receiver
+      const receiverInitialBalance = (mutezToTez((await Tezos.rpc.getBalance(recieverPkh)).toNumber()));
       setRecieverBalanceBefore(receiverInitialBalance);
-      const transaction = await Tezos.contract.transfer({ to: reciever, amount: amount, storageLimit: 700});
+
+      // reset receiver balance after for second transfers 
+      setRecieverBalanceAfter(0);
+
+      // send Tez to another account 
+      const transaction = await Tezos.wallet.transfer({ to: recieverPkh, amount: amount, mutez: true}).send();
+
       setLoading(true);
-      await transaction.confirmation();
+
+      // await confirmation from the chain
+      await transaction.confirmation(); // If the operation wasn't confirmed, it throws an error
       setLoading(false);
+
+      // update balance of sender
       getSetBalances(setBalance, Tezos);
-      const receiverFinalBalance = ((await Tezos.rpc.getBalance(reciever)).toNumber() / 1000000);
+      const senderPkh = await Tezos.wallet.pkh()
+      setBalance(mutezToTez((await Tezos.rpc.getBalance(senderPkh)).toNumber()))
+
+      // update balance of receiver after confirmation of transaction 
+      const receiverFinalBalance = (mutezToTez((await Tezos.rpc.getBalance(recieverPkh)).toNumber()));
       setRecieverBalanceAfter(receiverFinalBalance);
     } catch (e) {
       setError(e);
@@ -56,34 +64,64 @@ function App() {
 
   return (
      <div className='h-screen w-full bg-sky-200'>
-      <div className='flex w-full justify-end pt-10 pr-10 absolute'>
-        <Card className=''>
-          <Account signer={signer} setSigner={setSigner} Tezos={Tezos} pkh={pkh} balance={balance} setBalance={setBalance}/>
-        </Card>
+      <div className='flex flex-col justify-center items-center w-full md:justify-between md:items-start pt-10 px-10 absolute md:flex-row'>
+        {/* TITLE */}
+        <div className='bg-orange-100 rounded-md p-4 w-fit h-fit mb-4 md:mb-0'>
+          <h1 className='text-xl text-sky-900 font-extrabold'>Simple Transfer dApp</h1>
+        </div>
+        {/* Connect Wallet and Account information */}
+        <div className='bg-orange-100 rounded-md p-4 w-fit'>
+        {!walletInitialized ? 
+          <div className='flex flex-col items-center'>
+            <button className='border border-sky-400 rounded-md bg-sky-100 px-2' onClick={async () => {
+              const initWallet = await getWallet(wallet, setWalletInitialized);
+              Tezos.setWalletProvider(initWallet);
+
+              const getPkh = await initWallet.getPKH();
+              setPkh(getPkh);
+
+              const getBalance = await Tezos.rpc.getBalance(getPkh);
+              setBalance(mutezToTez(getBalance.toNumber()));
+            }}>Connect your wallet</button>
+          </div> : <div className='flex flex-col items-center'>
+            <p>Connected</p>
+            <p>your pkh is: {pkh}</p>
+            <p>your balance is: {balance}ꜩ</p>
+            <button className='border border-sky-400 rounded-md bg-sky-100 px-2' onClick={async () => {
+              await wallet.client.clearActiveAccount();
+              setWalletInitialized(false);
+              setPkh('');
+              setBalance(0);
+            }}>Disconnect</button>
+          </div>
+        }
+        </div>
       </div>
       <div className='h-full w-full flex justify-center items-center'>
-
-        <Card className=' w-3/5 flex flex-col items-center'>
+        {/* Transaction Interface */}
+        <div className='bg-orange-100 rounded-md p-4 w-fit flex flex-col items-center'>
           {error ? <>
             <pre>
               <code>{JSON.stringify(error, null, 4)}</code>
+              <button onClick={() => setError(undefined)}>reset</button>
             </pre>
-          </> : 
-          <>
-            <h1 className='text-lg'>Transfer Tez</h1>
-            <label>Reciever:</label>
-            <input type="text" className='w-4/5 text-center border border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setReciever(e.target.value)}} />
-            <label>Amount:</label>
-            <input type="number" min={0} className='w-4/5 border text-center border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setAmount(Number(e.target.value) ? Number(e.target.value) : 0)}} />
+          </> : walletInitialized ? 
+            <>
+              <h1 className='text-lg'>Transfer Tez</h1>
+              <label>Reciever:</label>
+              <input type="text" className='w-4/5 text-center border border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setRecieverPkh(e.target.value)}} />
+              <label>Amount in Mutez (1 Tez = 1000000 Mutez):</label>
+              <input type="number" min={0} className='w-4/5 border text-center border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setAmount(Number(e.target.value) ? Number(e.target.value) : 0)}} />
 
-            {!loading ? <button className='border border-sky-400 rounded-md bg-sky-100 px-2' onClick={sendTez}>Send</button> : <><p>loading...</p></>}
-            <p className='pt-2'>test reciever:</p>
-            <p className='pt-2'>tz1RugwuGQsNDRUtP2NZmtXCsqL7TgpXh2Wo</p>
-            {recieverBalanceBefore ? <p className='pt-2'>reciever balance before: {recieverBalanceBefore}ꜩ</p> : <></>}
-            {recieverBalanceAfter ? <p className='pt-2'>reciever balance after: {recieverBalanceAfter}ꜩ</p> : <></>}
-          </>
+              {!loading ? <button className='border border-sky-400 rounded-md bg-sky-100 px-2' onClick={sendTez}>Send</button> : <p className='border border-sky-400 rounded-md bg-sky-100 px-2'>loading...</p>}
+              <p className='pt-2'>test reciever:</p>
+              <p className='pt-2'>tz1RugwuGQsNDRUtP2NZmtXCsqL7TgpXh2Wo</p>
+              {recieverBalanceBefore ? <p className='pt-2'>reciever balance before: {recieverBalanceBefore}ꜩ</p> : <></>}
+              {recieverBalanceAfter ? <p className='pt-2'>reciever balance after: {recieverBalanceAfter}ꜩ</p> : <></>}
+            </> : 
+            <p>Please connect your wallet </p>
         }
-        </Card>
+        </div>
       </div>
      </div>
   );
