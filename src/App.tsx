@@ -18,10 +18,10 @@ function App() {
   const [pkh, setPkh] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
 
-  // Reciever Information
-  const [recieverPkh, setRecieverPkh] = useState<string>('');
-  const [recieverBalanceBefore, setRecieverBalanceBefore] = useState<number>(0);
-  const [recieverBalanceAfter, setRecieverBalanceAfter] = useState<number>(0);
+  // Receiver Information
+  const [receiverPkh, setReceiverPkh] = useState<string>('');
+  const [receiverBalanceBefore, setReceiverBalanceBefore] = useState<number>(0);
+  const [receiverBalanceAfter, setReceiverBalanceAfter] = useState<number>(0);
 
   // Amount to send
   const [amount, setAmount] = useState<number>(0);
@@ -33,14 +33,14 @@ function App() {
   const sendTez = async () => {
     try {
       // Get Initial Balance of Receiver
-      const receiverInitialBalance = (mutezToTez((await Tezos.rpc.getBalance(recieverPkh)).toNumber()));
-      setRecieverBalanceBefore(receiverInitialBalance);
+      const receiverInitialBalance = (mutezToTez((await Tezos.rpc.getBalance(receiverPkh)).toNumber()));
+      setReceiverBalanceBefore(receiverInitialBalance);
 
       // reset receiver balance after for second transfers 
-      setRecieverBalanceAfter(0);
+      setReceiverBalanceAfter(0);
 
       // send Tez to another account 
-      const transaction = await Tezos.wallet.transfer({ to: recieverPkh, amount: amount, mutez: true}).send();
+      const transaction = await Tezos.wallet.transfer({ to: receiverPkh, amount: amount, mutez: true}).send();
 
       setLoading(true);
 
@@ -53,8 +53,8 @@ function App() {
       setBalance(mutezToTez((await Tezos.rpc.getBalance(senderPkh)).toNumber()))
 
       // update balance of receiver after confirmation of transaction 
-      const receiverFinalBalance = (mutezToTez((await Tezos.rpc.getBalance(recieverPkh)).toNumber()));
-      setRecieverBalanceAfter(receiverFinalBalance);
+      const receiverFinalBalance = (mutezToTez((await Tezos.rpc.getBalance(receiverPkh)).toNumber()));
+      setReceiverBalanceAfter(receiverFinalBalance);
     } catch (e) {
       setError(e);
       setLoading(false);
@@ -113,8 +113,8 @@ function App() {
             walletInitialized ? 
               <>
                 <h1 className='text-lg'>Transfer Tez</h1>
-                <label>Reciever:</label>
-                <input type="text" className='w-4/5 text-center border border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setRecieverPkh(e.target.value)}} />
+                <label>Receiver:</label>
+                <input type="text" className='w-4/5 text-center border border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setReceiverPkh(e.target.value)}} />
                 <label>Amount in Mutez (1 Tez = 1000000 Mutez):</label>
                 <input type="number" min={0} className='w-4/5 border text-center border-sky-400 rounded-md bg-sky-100 mb-2' onChange={(e) => {setAmount(Number(e.target.value) ? Number(e.target.value) : 0)}} />
                 {/* TODO button or loading */}
@@ -122,15 +122,15 @@ function App() {
                   <button className='border border-sky-400 rounded-md bg-sky-100 px-2' onClick={sendTez}>Send</button> : 
                   <p className='border border-sky-400 rounded-md bg-sky-100 px-2'>loading...</p>
                 }
-                <p className='pt-2'>test reciever:</p>
+                <p className='pt-2'>test receiver:</p>
                 <p className='pt-2'>tz1RugwuGQsNDRUtP2NZmtXCsqL7TgpXh2Wo</p>
                 {/* TODO add balance before and after */}
-                {recieverBalanceBefore ? 
-                  <p className='pt-2'>reciever balance before: {recieverBalanceBefore}ꜩ</p> : 
+                {receiverBalanceBefore ? 
+                  <p className='pt-2'>receiver balance before: {receiverBalanceBefore}ꜩ</p> : 
                   <></>
                 }
-                {recieverBalanceAfter ? 
-                  <p className='pt-2'>reciever balance after: {recieverBalanceAfter}ꜩ</p> : 
+                {receiverBalanceAfter ? 
+                  <p className='pt-2'>receiver balance after: {receiverBalanceAfter}ꜩ</p> : 
                   <></>
                 }
               </> : 
