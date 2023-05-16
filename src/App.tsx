@@ -6,8 +6,10 @@ import { NetworkType, Regions } from "@airgap/beacon-types";
 
 
 function App() {
-  const network = 'https://ghostnet.ecadinfra.com';
-  const defaultMatrixNode = "beacon-node-1.sky.papers.tech";
+  const network = 'http://localhost:20000' as NetworkType;
+  const defaultMatrixNode = "beacon-node-0.papers.tech:8448";
+  const beaconDappClientOptions = { name: "Simple Transfer dApp", preferredNetwork: NetworkType.CUSTOM, matrixNodes: { [Regions.NORTH_AMERICA_WEST]: [defaultMatrixNode] } }
+
 
   // Basic States
   const [loading, setLoading] = useState<boolean>(false);
@@ -27,7 +29,7 @@ function App() {
   const [amount, setAmount] = useState<number>(0);
 
   // Hold Wallet and TezosToolkit instances
-  const [wallet] = useState<BeaconWallet>(new BeaconWallet({ name: "Simple Transfer dApp", preferredNetwork: NetworkType.GHOSTNET, matrixNodes: { [Regions.NORTH_AMERICA_WEST]: [defaultMatrixNode] } }));
+  const [wallet] = useState<BeaconWallet>(new BeaconWallet(beaconDappClientOptions));
   const [Tezos] = useState<TezosToolkit>(new TezosToolkit(network));
 
   const sendTez = async () => {
