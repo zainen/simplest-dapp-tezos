@@ -8,7 +8,7 @@ A simple dApp that allows users to connect a wallet using `BeaconWallet` via `@t
 https://news.ecadlabs.com/first-tezos-dapp-sortof-a071bb84e9d5
 
 ## Scripts
-### npm install
+### `npm install`
 
 ### `npm run start`
 
